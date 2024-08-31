@@ -20,7 +20,7 @@ string appId = "";//appid
 string toKen = "";//密钥
 
 //可选配置，一般而言是不用修改的！
-int coolTime = 1300;//冷却时间，这里的单位是毫秒，1秒钟=1000毫秒，如果提示 error:54003, 那么就加大这个数字，建议一次加100
+int coolTime = 10;//冷却时间，这里的单位是毫秒，1秒钟=1000毫秒，如果提示 error:54003, 那么就加大这个数字，建议一次加100
 string userAgent = "Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36";//这个是可选配置，一般不用修改！
 
 //执行环境，请不要修改！
@@ -58,12 +58,12 @@ string GetLoginDesc(){
 
 /** 获取登录时，用户输入框的标签名称 */
 string GetUserText(){
-    return "App ID:";
+    return "无效随意";
 }
 
 /** 获取登录时，密码输入框的标签名称 */
 string GetPasswordText(){
-    return "密钥:";
+    return "access_token";
 }
 
 
@@ -105,7 +105,6 @@ string Translate(string text, string &in srcLang, string &in dstLang){
     string ret = "";
     if(!text.empty()){//确实有内容需要翻译才有必要继续
         //开发文档。需要App id 等信息
-        //http://api.fanyi.baidu.com/api/trans/product/apidoc
         // HostOpenConsole();    // for debug
         
         //语言选择
@@ -117,9 +116,11 @@ string Translate(string text, string &in srcLang, string &in dstLang){
         
         //构建请求的 url 地址
         string salt = "" + HostGetTickCount();//随机数
-        string sign = HostHashMD5(appId + text + salt + toKen);//签名 appid+q+salt+密钥
-        string parames = "from=" + srcLang + "&to=" + dstLang + "&appid=" + appId + "&sign=" + sign  + "&salt=" + salt + "&q=" + q;
-        string url = "http://api.fanyi.baidu.com/api/trans/vip/translate?" + parames;
+        //string sign = HostHashMD5(appId + text + salt + toKen);//签名 appid+q+salt+密钥
+        //string parames = "from=" + srcLang + "&to=" + dstLang + "&appid=" + appId + "&sign=" + sign  + "&salt=" + salt + "&q=" + q;
+		//string url = "http://api.fanyi.baidu.com/api/trans/vip/translate?" + parames;
+		string parames = "access_token="+toKen+"&from=" + srcLang + "&to=" + dstLang + "&q=" + q;
+        string url = "https://aip.baidubce.com/rpc/2.0/mt/texttrans/v1?" + parames;
 
         //线程同步 - 独占锁
         acquireExclusiveLock();
@@ -135,7 +136,8 @@ string Translate(string text, string &in srcLang, string &in dstLang){
 
         //请求翻译
         string html = HostUrlGetString(url, userAgent);
-
+		//return html;
+		
         //更新下次执行任务的时间
         nextExecuteTime = coolTime + HostGetTickCount();//上面 HostUrlGetString 需要时间执行，所以需要重新获取 TickCount
 
@@ -223,6 +225,22 @@ array<string>  GetLangTable(){
     return langTable;
 }
 
+/*
+新格式
+{
+	"result": {
+		"from": "en",
+		"trans_result": [
+			{
+				"dst": "今天",
+				"src": "today"
+			}
+		],
+		"to": "zh"
+	},
+	"log_id": 1829801858461131520
+}
+*/
 /** 解析Json数据
  * @param json 服务器返回的Json字符串
  */
@@ -240,7 +258,8 @@ string JsonParse(string json){
                 JsonValue errorMsg = root["error_msg"];//错误信息描述
                 ret = "error: " + errorCode.asString() + ", error_msg=" + errorMsg.asString();
             }else{//如果没发生错误
-                JsonValue transResult = root["trans_result"];//取得翻译结果
+			JsonValue result_mt = root["result"];//取得翻译结果
+                JsonValue transResult = result_mt["trans_result"];//取得翻译结果
                 if(transResult.isArray()){//如果有翻译结果-必须是数组形式
                     for(int i = 0; i < transResult.size(); i++){
                         JsonValue item = transResult[i];//取得翻译结果
