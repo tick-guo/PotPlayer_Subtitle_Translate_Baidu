@@ -1,5 +1,6 @@
 # 说明
 1. 适配新的百度云文本翻译接口：
+> 20240831 测试有效<p>
 > 去里面开通服务<p>
 > https://cloud.baidu.com/product/mt/text_trans
 2. 免费额度：
